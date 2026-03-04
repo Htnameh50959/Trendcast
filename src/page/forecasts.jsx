@@ -625,7 +625,7 @@ export default function Forecasts() {
                     />
                   </div>
                   <span className="metric-value">
-                    ${metrics.mae?.toFixed(2) || "N/A"}
+                    ₹{metrics.mae?.toFixed(2) || "N/A"}
                   </span>
                 </div>
               </div>
@@ -646,7 +646,7 @@ export default function Forecasts() {
                     />
                   </div>
                   <span className="metric-value">
-                    ${metrics.rmse?.toFixed(2) || "N/A"}
+                    ₹{metrics.rmse?.toFixed(2) || "N/A"}
                   </span>
                 </div>
               </div>
@@ -667,8 +667,10 @@ export default function Forecasts() {
                     />
                   </div>
                   <span className="metric-value">
-                    {metrics.accuracy != null && metrics.accuracy > 0
+                    {metrics.accuracy != null 
                       ? `${metrics.accuracy.toFixed(2)}%`
+                      : metrics.r2 != null
+                      ? `${(metrics.r2 * 100).toFixed(2)}%`
                       : "N/A"}
                   </span>
                 </div>

@@ -27,6 +27,9 @@ function Router() {
 
   return (
     <>
+      {!isAuthenticated && (
+        <AuthModal isOpen={true} onClose={() => {}} />
+      )}
       <Switch>
         <Route path="/">
           <div className="app-container">

@@ -109,7 +109,7 @@ const Dashboard = () => {
           </div>
           <div className="stat-info">
             <span className="stat-label">Total Sales</span>
-            <h3 className="stat-value">${stats.totalSales}</h3>
+            <h3 className="stat-value">₹{stats.totalSales}</h3>
             <span className="stat-trend positive">
               <ArrowUpRight size={16} /> 12%
             </span>
@@ -135,7 +135,7 @@ const Dashboard = () => {
           </div>
           <div className="stat-info">
             <span className="stat-label">Avg. Order Value</span>
-            <h3 className="stat-value">${stats.avgOrderValue}</h3>
+            <h3 className="stat-value">₹{stats.avgOrderValue}</h3>
             <span className="stat-trend negative">
               <ArrowDownRight size={16} /> 3%
             </span>
