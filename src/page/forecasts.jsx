@@ -104,10 +104,21 @@ export default function Forecasts() {
         method: "GET",
         headers,
       });
-        const result = await response.json();
+      const result = await response.json();
       if (!response.ok) throw new Error(result.error);
-      setsalesdata(result.data);
-      sessionStorage.setItem("salesdata", JSON.stringify(result.data));
+      
+      const data = result.data;
+      if (data && data.length > 0) {
+        const sortedData = [...data].sort((a, b) => new Date(a.date || a.Date) - new Date(b.date || b.Date));
+        setsalesdata(sortedData);
+        sessionStorage.setItem("salesdata", JSON.stringify(sortedData));
+        
+        if (!selectedColumn) {
+          const keys = Object.keys(sortedData[0]);
+          const defaultCol = keys.find(k => k.toLowerCase() === 'weekly_sales') || keys[0];
+          setSelectedColumn(defaultCol);
+        }
+      }
     } catch (error) {
       toast(error.message, "error");
     }

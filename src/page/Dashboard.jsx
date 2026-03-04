@@ -54,7 +54,7 @@ const Dashboard = () => {
       
       if (data && Array.isArray(data) && data.length > 0) {
         // Calculate basic stats
-        const totalSales = data.reduce((sum, item) => sum + (Number(item.Weekly_Sales) || 0), 0);
+        const totalSales = data.reduce((sum, item) => sum + (Number(item.weekly_sales || item.Weekly_Sales) || 0), 0);
         const totalOrders = data.length;
         const avgOrderValue = totalSales / totalOrders;
         
@@ -66,13 +66,13 @@ const Dashboard = () => {
         });
 
         // Prepare chart data (group by date)
-        const sortedData = [...data].sort((a, b) => new Date(a.Date) - new Date(b.Date)).slice(-12);
+        const sortedData = [...data].sort((a, b) => new Date(a.date || a.Date) - new Date(b.date || b.Date)).slice(-12);
         setChartData({
-          labels: sortedData.map(item => item.Date),
+          labels: sortedData.map(item => item.date || item.Date),
           datasets: [
             {
               label: 'Recent Sales',
-              data: sortedData.map(item => item.Weekly_Sales),
+              data: sortedData.map(item => item.weekly_sales || item.Weekly_Sales),
               borderColor: 'rgb(99, 102, 241)',
               backgroundColor: 'rgba(99, 102, 241, 0.5)',
               tension: 0.3,

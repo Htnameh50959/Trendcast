@@ -36,7 +36,8 @@ export const AuthProvider = ({ children }) => {
           } else {
             localStorage.removeItem("authToken");
             localStorage.removeItem("user");
-    window.location.reload();
+            setToken(null);
+            setUser(null);
           }
         }
       } catch (err) {
