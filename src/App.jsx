@@ -44,7 +44,6 @@ function Router() {
                     </button>
                   </div>
                 )}
-                <Salesdata />
               </div>
             </main>
             <ToastContainer />
@@ -55,10 +54,10 @@ function Router() {
             {isAuthenticated && <Sidebar />}
             <main className="main-content">
               <div className="salesdata-container">
-                {!isAuthenticated && (
+                {!isAuthenticated ? (
                   <div className="auth-prompt">
                     <h2>Welcome to Trendcast</h2>
-                    <p>Login to save your forecasts and data</p>
+                    <p>Login to access sales data</p>
                     <button 
                       className="auth-prompt-btn"
                       onClick={() => setShowAuthModal(true)}
@@ -66,8 +65,9 @@ function Router() {
                       Login / Sign Up
                     </button>
                   </div>
+                ) : (
+                  <Salesdata />
                 )}
-                <Salesdata />
               </div>
             </main>
             <ToastContainer />
@@ -78,10 +78,10 @@ function Router() {
             {isAuthenticated && <Sidebar />}
             <main className="main-content">
               <div className="salesdata-container">
-                {!isAuthenticated && (
+                {!isAuthenticated ? (
                   <div className="auth-prompt">
                     <h2>Welcome to Trendcast</h2>
-                    <p>Login to save your forecasts and data</p>
+                    <p>Login to access forecasts</p>
                     <button 
                       className="auth-prompt-btn"
                       onClick={() => setShowAuthModal(true)}
@@ -89,8 +89,9 @@ function Router() {
                       Login / Sign Up
                     </button>
                   </div>
+                ) : (
+                  <Forecasts />
                 )}
-                <Forecasts />
               </div>
             </main>
             <ToastContainer />
