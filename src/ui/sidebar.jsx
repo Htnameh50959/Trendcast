@@ -15,6 +15,8 @@ import { useAuth } from "../page/AuthModal";
 import "./ui.css";
 
 const path = [
+  { lable: "Dashboard", icon: LayoutDashboard, href: "/" },
+  { lable: "Dashboard", icon: LayoutDashboard, href: "/" },
   { lable: "Sales Data", icon: TableProperties, href: "/Sales" },
   { lable: "Forecasts", icon: TrendingUp, href: "/Forecasts" }
 ];

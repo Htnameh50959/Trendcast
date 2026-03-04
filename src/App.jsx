@@ -3,6 +3,7 @@ import "./app.css";
 import { Sidebar } from "./ui/sidebar";
 import { Route, Switch, useLocation } from "wouter";
 import Salesdata from "./page/salesdata";
+import Dashboard from "./page/Dashboard";
 import { ToastContainer } from "./ui/toast";
 import Forecasts from "./page/forecasts";
 import AuthModal from "./page/AuthModal";
@@ -31,8 +32,8 @@ function Router() {
           <div className="app-container">
             {isAuthenticated && <Sidebar />}
             <main className="main-content">
-              <div className="salesdata-container">
-                {!isAuthenticated && (
+              {!isAuthenticated ? (
+                <div className="salesdata-container">
                   <div className="auth-prompt">
                     <h2>Welcome to Trendcast</h2>
                     <p>Login to save your forecasts and data</p>
@@ -43,8 +44,10 @@ function Router() {
                       Login / Sign Up
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <Dashboard />
+              )}
             </main>
             <ToastContainer />
           </div>
