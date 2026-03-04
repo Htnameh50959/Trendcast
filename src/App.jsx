@@ -21,7 +21,7 @@ function Router() {
     }
   }, [location, isAuthenticated]);
 
-  if (loading) {
+  if (loading && false) {
     return <div className="loading-container">Loading...</div>;
   }
 
