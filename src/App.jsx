@@ -30,47 +30,19 @@ function Router() {
       <Switch>
         <Route path="/">
           <div className="app-container">
-            {isAuthenticated && <Sidebar />}
+            <Sidebar />
             <main className="main-content">
-              {!isAuthenticated ? (
-                <div className="salesdata-container">
-                  <div className="auth-prompt">
-                    <h2>Welcome to Trendcast</h2>
-                    <p>Login to save your forecasts and data</p>
-                    <button 
-                      className="auth-prompt-btn"
-                      onClick={() => setShowAuthModal(true)}
-                    >
-                      Login / Sign Up
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <Dashboard />
-              )}
+              <Dashboard />
             </main>
             <ToastContainer />
           </div>
         </Route>
         <Route path="/Sales">
           <div className="app-container">
-            {isAuthenticated && <Sidebar />}
+            <Sidebar />
             <main className="main-content">
               <div className="salesdata-container">
-                {!isAuthenticated ? (
-                  <div className="auth-prompt">
-                    <h2>Welcome to Trendcast</h2>
-                    <p>Login to access sales data</p>
-                    <button 
-                      className="auth-prompt-btn"
-                      onClick={() => setShowAuthModal(true)}
-                    >
-                      Login / Sign Up
-                    </button>
-                  </div>
-                ) : (
-                  <Salesdata />
-                )}
+                <Salesdata />
               </div>
             </main>
             <ToastContainer />
@@ -78,23 +50,10 @@ function Router() {
         </Route>
         <Route path="/Forecasts">
           <div className="app-container">
-            {isAuthenticated && <Sidebar />}
+            <Sidebar />
             <main className="main-content">
               <div className="salesdata-container">
-                {!isAuthenticated ? (
-                  <div className="auth-prompt">
-                    <h2>Welcome to Trendcast</h2>
-                    <p>Login to access forecasts</p>
-                    <button 
-                      className="auth-prompt-btn"
-                      onClick={() => setShowAuthModal(true)}
-                    >
-                      Login / Sign Up
-                    </button>
-                  </div>
-                ) : (
-                  <Forecasts />
-                )}
+                <Forecasts />
               </div>
             </main>
             <ToastContainer />
