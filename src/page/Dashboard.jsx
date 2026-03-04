@@ -50,8 +50,9 @@ const Dashboard = () => {
     try {
       setLoading(true);
       const data = await apiCall("/api/sales");
+      console.log("Dashboard data fetched:", data);
       
-      if (data && data.length > 0) {
+      if (data && Array.isArray(data) && data.length > 0) {
         // Calculate basic stats
         const totalSales = data.reduce((sum, item) => sum + (Number(item.Weekly_Sales) || 0), 0);
         const totalOrders = data.length;
