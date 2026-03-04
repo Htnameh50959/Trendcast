@@ -66,14 +66,19 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
 
     try:
         user_id = get_user_id_from_request(request)
+        response = supabase.table("sales_data").insert({
+            "data": data,
+            "filename": file.filename,
+            "record_count": len(data),
+            "user_id": user_id
+        }).execute()
     except:
-        user_id = "anonymous"
-
-    response = supabase.table("sales_data").insert({
-        "data": data,
-        "filename": file.filename,
-        "record_count": len(data)
-    }).execute()
+        # Fallback for development if auth isn't fully set up
+        response = supabase.table("sales_data").insert({
+            "data": data,
+            "filename": file.filename,
+            "record_count": len(data)
+        }).execute()
 
     if response.data is None:
         raise HTTPException(status_code=500, detail="Insert failed")
