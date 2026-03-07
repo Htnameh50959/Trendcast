@@ -10,6 +10,7 @@ import {
   Sparkles,
   LogOut,
   User,
+  LogIn,
 } from "lucide-react";
 import { useAuth } from "../page/AuthModal";
 import "./ui.css";
@@ -20,7 +21,7 @@ const path = [
   { label: "Forecasts", icon: TrendingUp, href: "/Forecasts" }
 ];
 
-export function Sidebar() {
+export function Sidebar({ onLoginClick }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
 
@@ -59,14 +60,23 @@ export function Sidebar() {
             );
           })}
         </div>
-        <div className="menu-footer">
-          <div className="footer">
-            <h5 className="h5">Pro Tip</h5>
-            <p>
-              Generate forecasts regularly to keep predictions accurate with
-              latest sales data.
-            </p>
-          </div>
+        
+        {/* Auth Button */}
+        <div className="menu-footer" style={{ marginTop: 'auto' }}>
+          {!user ? (
+            <button className="menu-item w-full text-left" onClick={onLoginClick} style={{ background: 'none', border: 'none', width: '100%', cursor: 'pointer' }}>
+              <LogIn className="menu-icon" />
+              <span>Login</span>
+            </button>
+          ) : (
+            <div className="footer">
+              <h5 className="h5">Pro Tip</h5>
+              <p>
+                Generate forecasts regularly to keep predictions accurate with
+                latest sales data.
+              </p>
+            </div>
+          )}
         </div>
         
         {/* User Section */}
