@@ -49,13 +49,14 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const data = await apiCall("/api/sales");
+      const data = await apiCall("/api/salesdata");
       console.log("Dashboard data fetched:", data);
       
-      if (data && Array.isArray(data) && data.length > 0) {
+      if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+        const salesList = data.data;
         // Calculate basic stats
-        const totalSales = data.reduce((sum, item) => sum + (Number(item.Weekly_Sales || item.weekly_sales || item.Sales || item.Amount) || 0), 0);
-        const totalOrders = data.length;
+        const totalSales = salesList.reduce((sum, item) => sum + (Number(item.Weekly_Sales || item.weekly_sales || item.Sales || item.Amount) || 0), 0);
+        const totalOrders = salesList.length;
         const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
         
         setStats({
@@ -66,11 +67,11 @@ const Dashboard = () => {
         });
 
         // Prepare chart data (group by date)
-        const dateKey = data[0].Date || data[0].date || 'Date';
-        const salesKey = data[0].Weekly_Sales || data[0].weekly_sales || data[0].Sales || data[0].Amount ? 
-          (data[0].Weekly_Sales ? 'Weekly_Sales' : (data[0].weekly_sales ? 'weekly_sales' : (data[0].Sales ? 'Sales' : 'Amount'))) : 'Amount';
+        const dateKey = salesList[0].Date || salesList[0].date || 'Date';
+        const salesKey = salesList[0].Weekly_Sales || salesList[0].weekly_sales || salesList[0].Sales || salesList[0].Amount ? 
+          (salesList[0].Weekly_Sales ? 'Weekly_Sales' : (salesList[0].weekly_sales ? 'weekly_sales' : (salesList[0].Sales ? 'Sales' : 'Amount'))) : 'Amount';
 
-        const sortedData = [...data]
+        const sortedData = [...salesList]
           .filter(item => item[dateKey])
           .sort((a, b) => new Date(a[dateKey]) - new Date(b[dateKey]))
           .slice(-20);
