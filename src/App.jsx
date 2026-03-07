@@ -29,19 +29,19 @@ function Router() {
     <>
       <Switch>
         <Route path="/">
-          <div className="app-container">
+          <div className="flex h-screen overflow-hidden bg-[#f8f9fc]">
             <Sidebar onLoginClick={() => setShowAuthModal(true)} />
-            <main className="main-content">
+            <main className="flex-1 overflow-y-auto">
               <Dashboard />
             </main>
             <ToastContainer />
           </div>
         </Route>
         <Route path="/Sales">
-          <div className="app-container">
+          <div className="flex h-screen overflow-hidden bg-[#f8f9fc]">
             <Sidebar onLoginClick={() => setShowAuthModal(true)} />
-            <main className="main-content">
-              <div className="salesdata-container">
+            <main className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-6xl mx-auto">
                 <Salesdata />
               </div>
             </main>
@@ -49,10 +49,10 @@ function Router() {
           </div>
         </Route>
         <Route path="/Forecasts">
-          <div className="app-container">
+          <div className="flex h-screen overflow-hidden bg-[#f8f9fc]">
             <Sidebar onLoginClick={() => setShowAuthModal(true)} />
-            <main className="main-content">
-              <div className="salesdata-container">
+            <main className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-6xl mx-auto">
                 <Forecasts />
               </div>
             </main>
