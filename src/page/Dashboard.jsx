@@ -54,9 +54,9 @@ const Dashboard = () => {
       
       if (data && Array.isArray(data) && data.length > 0) {
         // Calculate basic stats
-        const totalSales = data.reduce((sum, item) => sum + (Number(item.weekly_sales || item.Weekly_Sales) || 0), 0);
+        const totalSales = data.reduce((sum, item) => sum + (Number(item.Weekly_Sales || item.weekly_sales || item.Sales || item.Amount) || 0), 0);
         const totalOrders = data.length;
-        const avgOrderValue = totalSales / totalOrders;
+        const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
         
         setStats({
           totalSales: totalSales.toLocaleString(undefined, { maximumFractionDigits: 2 }),
@@ -66,16 +66,25 @@ const Dashboard = () => {
         });
 
         // Prepare chart data (group by date)
-        const sortedData = [...data].sort((a, b) => new Date(a.date || a.Date) - new Date(b.date || b.Date)).slice(-12);
+        const dateKey = data[0].Date || data[0].date || 'Date';
+        const salesKey = data[0].Weekly_Sales || data[0].weekly_sales || data[0].Sales || data[0].Amount ? 
+          (data[0].Weekly_Sales ? 'Weekly_Sales' : (data[0].weekly_sales ? 'weekly_sales' : (data[0].Sales ? 'Sales' : 'Amount'))) : 'Amount';
+
+        const sortedData = [...data]
+          .filter(item => item[dateKey])
+          .sort((a, b) => new Date(a[dateKey]) - new Date(b[dateKey]))
+          .slice(-20);
+
         setChartData({
-          labels: sortedData.map(item => item.date || item.Date),
+          labels: sortedData.map(item => item[dateKey]),
           datasets: [
             {
-              label: 'Recent Sales',
-              data: sortedData.map(item => item.weekly_sales || item.Weekly_Sales),
+              label: 'Sales Trend',
+              data: sortedData.map(item => Number(item[salesKey]) || 0),
               borderColor: 'rgb(99, 102, 241)',
               backgroundColor: 'rgba(99, 102, 241, 0.5)',
               tension: 0.3,
+              fill: true,
             },
           ],
         });
