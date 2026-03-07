@@ -61,16 +61,18 @@ export function Sidebar({ onLoginClick }) {
           })}
         </div>
         
+        <hr />
+
         {/* Auth Button */}
-        <div className="menu-footer" style={{ marginTop: 'auto' }}>
+        <div className="menu" style={{ marginTop: 'auto' }}>
           {!user ? (
-            <button className="menu-item w-full text-left" onClick={onLoginClick} style={{ background: 'none', border: 'none', width: '100%', cursor: 'pointer' }}>
+            <button className="menu-item" onClick={onLoginClick} style={{ background: 'none', border: 'none', width: '100%', cursor: 'pointer', textAlign: 'left' }}>
               <LogIn className="menu-icon" />
               <span>Login</span>
             </button>
           ) : (
-            <div className="footer">
-              <h5 className="h5">Pro Tip</h5>
+            <div className="footer" style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
+              <h5 className="h5" style={{ marginBottom: '4px', fontWeight: '600' }}>Pro Tip</h5>
               <p>
                 Generate forecasts regularly to keep predictions accurate with
                 latest sales data.
