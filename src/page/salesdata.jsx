@@ -18,12 +18,6 @@ import Dialog from "../ui/Dialog";
 import "../ui/ui.css";
 import { toast } from "../ui/toast";
 import { getApiUrl } from "../utils/api";
-import { auth } from "../firebase";
-
-const getFreshToken = async () => {
-  if (auth.currentUser) return await auth.currentUser.getIdToken();
-  return localStorage.getItem("authToken");
-};
 
 export default function Salesdata() {
   const [isopenimportdialog, setisopenimportdialog] = useState(false);
@@ -59,7 +53,7 @@ export default function Salesdata() {
     body.append("file", importedfile);
 
     try {
-      const token = await getFreshToken();
+      const token = localStorage.getItem("authToken");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await fetch(getApiUrl("/api/upload"), {
         method: "POST",
@@ -92,7 +86,7 @@ export default function Salesdata() {
   const deletedata = async () => {
     if (!window.confirm("Are you sure you want to clear all data?")) return;
     try {
-      const token = await getFreshToken();
+      const token = localStorage.getItem("authToken");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await fetch(getApiUrl("/api/delete"), {
         method: "GET",
@@ -120,7 +114,7 @@ export default function Salesdata() {
   const fatchdata = async () => {
     try {
       setDataloading(true);
-      const token = await getFreshToken();
+      const token = localStorage.getItem("authToken");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await fetch(getApiUrl("/api/salesdata"), {
         method: "GET",
@@ -155,7 +149,7 @@ export default function Salesdata() {
   const handleaddrecord = async (e) => {
     e.preventDefault();
     try {
-      const token = await getFreshToken();
+      const token = localStorage.getItem("authToken");
       const headers = {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
@@ -182,7 +176,7 @@ export default function Salesdata() {
   const handledeleterecord = async (record) => {
     if (!window.confirm("Delete this record?")) return;
     try {
-      const token = await getFreshToken();
+      const token = localStorage.getItem("authToken");
       const headers = {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
@@ -212,7 +206,7 @@ export default function Salesdata() {
 
   const exportcsv = async () => {
     try {
-      const token = await getFreshToken();
+      const token = localStorage.getItem("authToken");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await fetch(getApiUrl("/api/export"), { 
         method: "GET",
