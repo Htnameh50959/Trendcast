@@ -120,13 +120,17 @@ async def delete_data(request: Request):
             .order("id", desc=True) \
             .limit(1) \
             .execute()
-            
-        if latest.data:
-            response = supabase.table("sales_data") \
-                .delete() \
-                .eq("id", latest.data[0]["id"]) \
-                .eq("user_id", user_id) \
-                .execute()
+
+        if not latest.data:
+            return {"message": "No data to delete", "type": "info"}
+
+        supabase.table("sales_data") \
+            .delete() \
+            .eq("id", latest.data[0]["id"]) \
+            .eq("user_id", user_id) \
+            .execute()
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error deleting data: {e}")
         raise HTTPException(status_code=500, detail="Delete failed")
@@ -210,12 +214,14 @@ async def export_data(request: Request):
             .order("id", desc=True) \
             .limit(1) \
             .execute()
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error exporting data: {e}")
         raise HTTPException(status_code=500, detail="Export failed")
 
     if not response.data:
-        raise HTTPException(status_code=404, detail="No data found")
+        raise HTTPException(status_code=404, detail="No data found to export")
 
     df = pd.DataFrame(response.data[0]["data"])
 

@@ -252,10 +252,16 @@ async def generate_forecast(req: ForecastRequest, request: Request):
 
         return response_payload
 
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _is_missing_table_error(e: Exception) -> bool:
+    return "PGRST205" in str(e) or "schema cache" in str(e).lower()
 
 
 # ==========================
@@ -270,10 +276,14 @@ async def get_user_forecasts(request: Request):
             .order("created_at", desc=True)
             .execute()
         )
-        
         return {"forecasts": response.data}
-    
+
     except Exception as e:
+        if _is_missing_table_error(e):
+            raise HTTPException(
+                status_code=503,
+                detail="Forecasts table not set up yet. Please run the SQL in supabase_setup.sql on your Supabase dashboard."
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -290,13 +300,20 @@ async def get_forecast(forecast_id: str, request: Request):
             .single()
             .execute()
         )
-        
+
         if not response.data:
             raise HTTPException(status_code=404, detail="Forecast not found")
-        
+
         return {"forecast": response.data}
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
+        if _is_missing_table_error(e):
+            raise HTTPException(
+                status_code=503,
+                detail="Forecasts table not set up yet. Please run the SQL in supabase_setup.sql on your Supabase dashboard."
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -308,6 +325,11 @@ async def delete_forecast(forecast_id: str, request: Request):
     try:
         supabase.table("forecasts").delete().eq("id", forecast_id).execute()
         return {"message": "Forecast deleted successfully"}
-    
+
     except Exception as e:
+        if _is_missing_table_error(e):
+            raise HTTPException(
+                status_code=503,
+                detail="Forecasts table not set up yet. Please run the SQL in supabase_setup.sql on your Supabase dashboard."
+            )
         raise HTTPException(status_code=500, detail=str(e))
