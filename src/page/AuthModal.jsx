@@ -1,16 +1,17 @@
 import React, { useState, createContext, useContext, useEffect } from "react";
 import { Mail, Lock, User, AlertCircle, X } from "lucide-react";
 import { useLocation } from "wouter";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "../firebase";
 import "./auth-modal.css";
 
-// -----------------------------------
-// Authentication context/provider
-// merged from AuthContext.jsx
-// -----------------------------------
-
 const AuthContext = createContext();
-
-const API_BASE_URL = "";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -19,103 +20,83 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const storedToken = localStorage.getItem("authToken");
-        const storedUser = localStorage.getItem("user");
-
-        if (storedToken && storedUser) {
-          const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-            headers: { Authorization: `Bearer ${storedToken}` },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setToken(storedToken);
-            setUser(data.user);
-          } else {
-            localStorage.removeItem("authToken");
-            localStorage.removeItem("user");
-            setToken(null);
-            setUser(null);
-          }
-        }
-      } catch (err) {
-        console.error("Auth check error:", err);
-      } finally {
-        setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const idToken = await firebaseUser.getIdToken();
+        setToken(idToken);
+        setUser({
+          id: firebaseUser.uid,
+          email: firebaseUser.email,
+          full_name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+        });
+        localStorage.setItem("authToken", idToken);
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            id: firebaseUser.uid,
+            email: firebaseUser.email,
+            full_name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+          })
+        );
+      } else {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("user");
       }
-    };
+      setLoading(false);
+    });
 
-    checkAuth();
+    return () => unsubscribe();
   }, []);
 
   const signup = async (email, password, fullName) => {
     try {
       setError(null);
-      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, {
+        displayName: fullName || email.split("@")[0],
+      });
+
+      await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, full_name: fullName }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Signup failed");
-
-      setToken(data.access_token);
-      setUser(data.user);
-      localStorage.setItem("authToken", data.access_token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      window.location.reload();
       return { success: true };
     } catch (err) {
-      setError(err.message || "Error during signup");
-      return { success: false };
+      const msg = err.code === "auth/email-already-in-use"
+        ? "Email already registered"
+        : err.message || "Error during signup";
+      setError(msg);
+      return { success: false, error: msg };
     }
   };
 
   const login = async (email, password) => {
     try {
       setError(null);
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Login failed");
-
-      setToken(data.access_token);
-      setUser(data.user);
-      localStorage.setItem("authToken", data.access_token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      window.location.reload();
+      await signInWithEmailAndPassword(auth, email, password);
       return { success: true };
     } catch (err) {
-      setError(err.message || "Error during login");
-      return { success: false };
+      const msg = "Invalid email or password";
+      setError(msg);
+      return { success: false, error: msg };
     }
   };
 
   const logout = async () => {
-    try {
-      await fetch(`${API_BASE_URL}/api/auth/logout`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    } catch (err) {
-      console.error("Logout error:", err);
-    }
-
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
+    await signOut(auth);
     window.location.reload();
   };
 
-  const getToken = () => token;
+  const getToken = async () => {
+    if (auth.currentUser) {
+      return await auth.currentUser.getIdToken();
+    }
+    return token;
+  };
 
   return (
     <AuthContext.Provider
@@ -186,7 +167,6 @@ export default function AuthModal({ isOpen, onClose }) {
         setFullName("");
         setIsLogin(true);
         setError("");
-        // Auto login after signup
         const loginResult = await login(email, password);
         if (loginResult.success) {
           setLocation("/Sales");
@@ -291,7 +271,13 @@ export default function AuthModal({ isOpen, onClose }) {
           )}
 
           <button type="submit" className="auth-submit-btn" disabled={loading}>
-            {loading ? (isLogin ? "Logging in..." : "Creating account...") : isLogin ? "Login" : "Create Account"}
+            {loading
+              ? isLogin
+                ? "Logging in..."
+                : "Creating account..."
+              : isLogin
+              ? "Login"
+              : "Create Account"}
           </button>
         </form>
 

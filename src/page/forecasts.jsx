@@ -19,6 +19,12 @@ import {
   Filler,
 } from "chart.js";
 import zoomPlugin from "chartjs-plugin-zoom";
+import { auth } from "../firebase";
+
+const getFreshToken = async () => {
+  if (auth.currentUser) return await auth.currentUser.getIdToken();
+  return localStorage.getItem("authToken");
+};
 
 ChartJS.register(
   CategoryScale,
@@ -98,7 +104,7 @@ export default function Forecasts() {
 
   const fetchdata = async () => {
     try {
-      const token = localStorage.getItem("authToken");
+      const token = await getFreshToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await fetch(getApiUrl("/api/salesdata"), {
         method: "GET",
@@ -132,7 +138,7 @@ export default function Forecasts() {
     setIsLoading(true);
     setIsAllColumnsMode(false);
     try {
-      const token = localStorage.getItem("authToken");
+      const token = await getFreshToken();
       const headers = {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
@@ -188,7 +194,7 @@ export default function Forecasts() {
     try {
       const allResults = await Promise.all(
         columnsToProcess.map(async (col) => {
-          const token = localStorage.getItem("authToken");
+          const token = await getFreshToken();
           const headers = {
             "Content-Type": "application/json",
             ...(token && { Authorization: `Bearer ${token}` }),

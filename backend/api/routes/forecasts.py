@@ -4,27 +4,12 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-from supabase import create_client, Client
-from datetime import datetime
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from datetime import datetime, timezone
+from api.firebase_admin_init import get_db, verify_token
 
 router = APIRouter()
 
-# ==========================
-# SUPABASE CONFIG
-# ==========================
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://coztxkaoyxphgvoulbel.supabase.co")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvenR4a2FveXhwaGd2b3VsYmVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTI3MTEsImV4cCI6MjA4Nzc2ODcxMX0.Pa8rf_fFIAaIj0wiDGLoi11qP9mRqJl8YP7Qbt3ojkU")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-
-# ==========================
-# REQUEST MODEL
-# ==========================
 class ForecastRequest(BaseModel):
     column: str = "Weekly_Sales"
     horizon: int = 30
@@ -32,75 +17,59 @@ class ForecastRequest(BaseModel):
     group_by: str | None = None
 
 
-# ==========================
-# HELPER: GET USER ID FROM REQUEST
-# ==========================
 def get_user_id_from_request(request: Request) -> str:
-    """Extract and verify user_id from request token"""
     token = getattr(request.state, "token", None)
     if not token:
         raise HTTPException(status_code=401, detail="No authentication token provided")
-    
     try:
-        user = supabase.auth.get_user(token)
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return user.user.id
-    except Exception as e:
+        return verify_token(token)
+    except Exception:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
-# ==========================
-# FORECAST API
-# ==========================
+def get_latest_sales_doc(user_id: str):
+    db = get_db()
+    docs = (
+        db.collection("sales_data")
+        .where("user_id", "==", user_id)
+        .order_by("created_at", direction="DESCENDING")
+        .limit(1)
+        .stream()
+    )
+    results = list(docs)
+    return results[0].to_dict() if results else None
+
+
 @router.post("/generateforecast")
 async def generate_forecast(req: ForecastRequest, request: Request):
     try:
-        # Get latest data without user filter since user_id column is missing
-        response = (
-            supabase.table("sales_data")
-            .select("*")
-            .order("id", desc=True)
-            .limit(1)
-            .execute()
-        )
-        
         user_id = "anonymous"
         try:
             user_id = get_user_id_from_request(request)
-        except:
+        except Exception:
             pass
-        
+
+        dataset = get_latest_sales_doc(user_id) if user_id != "anonymous" else None
+
+        if not dataset:
+            raise HTTPException(status_code=400, detail="No data available. Please upload sales data first.")
+
         column = req.column
         horizon = req.horizon
 
-        if not response.data:
-            raise HTTPException(status_code=400, detail="No data available in Supabase")
-
-        dataset = response.data[0]
         df = pd.DataFrame(dataset.get("data", []))
 
         if df.empty or "Date" not in df.columns or column not in df.columns:
-            raise HTTPException(
-                status_code=400,
-                detail="Insufficient data for forecasting"
-            )
+            raise HTTPException(status_code=400, detail="Insufficient data for forecasting")
 
-        # ==========================
-        # PREPROCESSING
-        # ==========================
         df["Date"] = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce")
         df = df.dropna(subset=["Date", column])
 
         if df.empty:
-            raise HTTPException(
-                status_code=400,
-                detail="No valid data found in selected column"
-            )
+            raise HTTPException(status_code=400, detail="No valid data found in selected column")
 
         df = df.sort_values("Date").reset_index(drop=True)
 
-        # Aggregate daily
         series = (
             df.groupby("Date")[column]
             .sum()
@@ -110,14 +79,8 @@ async def generate_forecast(req: ForecastRequest, request: Request):
         )
 
         if len(series) < 2:
-            raise HTTPException(
-                status_code=400,
-                detail="Not enough data points for forecasting"
-            )
+            raise HTTPException(status_code=400, detail="Not enough data points for forecasting")
 
-        # ==========================
-        # FORECAST FUNCTION
-        # ==========================
         def forecast_series(series_obj, horizon_val):
             try:
                 if len(series_obj) > 14:
@@ -135,14 +98,11 @@ async def generate_forecast(req: ForecastRequest, request: Request):
                         enforce_stationarity=False,
                         enforce_invertibility=False,
                     )
-
                 model_fit = model.fit(disp=False)
                 forecast = model_fit.get_forecast(steps=horizon_val).predicted_mean
                 fitted = model_fit.fittedvalues
-
             except Exception:
                 from statsmodels.tsa.holtwinters import ExponentialSmoothing
-
                 model = ExponentialSmoothing(
                     series_obj,
                     trend="add",
@@ -152,17 +112,12 @@ async def generate_forecast(req: ForecastRequest, request: Request):
                 model_fit = model.fit()
                 forecast = model_fit.forecast(horizon_val)
                 fitted = model_fit.fittedvalues
-
             return forecast, fitted
 
-        # ==========================
-        # METRICS FUNCTION
-        # ==========================
         def compute_metrics(actual, predicted):
             mae = mean_absolute_error(actual, predicted)
             mse = mean_squared_error(actual, predicted)
             r2 = r2_score(actual, predicted)
-
             return {
                 "mae": float(mae),
                 "mse": float(mse),
@@ -171,9 +126,6 @@ async def generate_forecast(req: ForecastRequest, request: Request):
                 "accuracy": float(max(0, min(100, r2 * 100))),
             }
 
-        # ==========================
-        # MAIN FORECAST
-        # ==========================
         forecast_values, historical_pred = forecast_series(series, horizon)
         metrics = compute_metrics(series, historical_pred)
 
@@ -196,17 +148,12 @@ async def generate_forecast(req: ForecastRequest, request: Request):
             "is_grouped": False,
         }
 
-        # ==========================
-        # GROUPING SUPPORT
-        # ==========================
         if req.group_by and req.group_by in df.columns:
             groups_dict = {}
-
             for group_value, group_df in df.groupby(req.group_by):
                 group_df = group_df.dropna(subset=["Date", column])
                 if group_df.empty:
                     continue
-
                 sub_series = (
                     group_df.groupby("Date")[column]
                     .sum()
@@ -214,39 +161,27 @@ async def generate_forecast(req: ForecastRequest, request: Request):
                     .sum()
                     .fillna(0)
                 )
-
                 if len(sub_series) < 2:
                     continue
-
                 group_forecast, group_pred = forecast_series(sub_series, horizon)
-
                 groups_dict[str(group_value)] = {
                     "historical": sub_series.values.tolist(),
-                    "forecast": [
-                        max(0, float(v)) for v in group_forecast.tolist()
-                    ],
+                    "forecast": [max(0, float(v)) for v in group_forecast.tolist()],
                     "dates": sub_series.index.strftime("%Y-%m-%d").tolist(),
                 }
-
             response_payload["is_grouped"] = True
             response_payload["groups"] = groups_dict
 
-        # SAVE FORECAST TO DATABASE
-        forecast_record = {
-            "column": column,
-            "horizon": horizon,
-            "model": req.model,
-            "forecast_data": response_payload,
-            "created_at": datetime.utcnow().isoformat(),
-        }
-        
-        # Add user_id if column exists, otherwise omit
-        # (Assuming forecasts table might also miss user_id based on sales_data)
-        # For now, let's try to include it but wrap in try/except or just omit if unsure
-        # To be safe, let's see if we can check forecasts columns too or just omit
-        
         try:
-            supabase.table("forecasts").insert(forecast_record).execute()
+            db = get_db()
+            db.collection("forecasts").add({
+                "column": column,
+                "horizon": horizon,
+                "model": req.model,
+                "forecast_data": response_payload,
+                "user_id": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
         except Exception as db_err:
             print(f"Warning: Could not save forecast to database: {db_err}")
 
@@ -258,56 +193,43 @@ async def generate_forecast(req: ForecastRequest, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ==========================
-# GET USER FORECASTS
-# ==========================
 @router.get("/forecasts")
 async def get_user_forecasts(request: Request):
     try:
-        response = (
-            supabase.table("forecasts")
-            .select("*")
-            .order("created_at", desc=True)
-            .execute()
+        user_id = get_user_id_from_request(request)
+        db = get_db()
+        docs = (
+            db.collection("forecasts")
+            .where("user_id", "==", user_id)
+            .order_by("created_at", direction="DESCENDING")
+            .stream()
         )
-        
-        return {"forecasts": response.data}
-    
+        return {"forecasts": [d.to_dict() for d in docs]}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ==========================
-# GET SINGLE FORECAST
-# ==========================
 @router.get("/forecasts/{forecast_id}")
 async def get_forecast(forecast_id: str, request: Request):
     try:
-        response = (
-            supabase.table("forecasts")
-            .select("*")
-            .eq("id", forecast_id)
-            .single()
-            .execute()
-        )
-        
-        if not response.data:
+        db = get_db()
+        doc = db.collection("forecasts").document(forecast_id).get()
+        if not doc.exists:
             raise HTTPException(status_code=404, detail="Forecast not found")
-        
-        return {"forecast": response.data}
-    
+        return {"forecast": doc.to_dict()}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ==========================
-# DELETE FORECAST
-# ==========================
 @router.delete("/forecasts/{forecast_id}")
 async def delete_forecast(forecast_id: str, request: Request):
     try:
-        supabase.table("forecasts").delete().eq("id", forecast_id).execute()
+        db = get_db()
+        db.collection("forecasts").document(forecast_id).delete()
         return {"message": "Forecast deleted successfully"}
-    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
