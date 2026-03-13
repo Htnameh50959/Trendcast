@@ -139,8 +139,10 @@ export default function Salesdata() {
       sessionStorage.setItem("salesdata", JSON.stringify(result.data || []));
       toast("Data Synchronized", "success");
     } catch (error) {
-      console.error("Fetch error:", error);
-      toast(error.message, "error");
+      const msg = error.message || "";
+      if (!msg.includes("No data found") && !msg.includes("404")) {
+        toast(error.message, "error");
+      }
     } finally {
       setDataloading(false);
     }
@@ -208,21 +210,28 @@ export default function Salesdata() {
     try {
       const token = localStorage.getItem("authToken");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await fetch(getApiUrl("/api/export"), { 
+      const response = await fetch(getApiUrl("/api/export"), {
         method: "GET",
         headers,
       });
       if (!response.ok) {
-        throw new Error("Failed to export data");
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const err = await response.json();
+          throw new Error(err.detail || "Failed to export data");
+        }
+        throw new Error(`Export failed (${response.status})`);
       }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `sales_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute("download", `sales_export_${new Date().toISOString().split("T")[0]}.csv`);
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      toast("Export downloaded successfully!", "success");
     } catch (error) {
       toast(error.message, "error");
     }

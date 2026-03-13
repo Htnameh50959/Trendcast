@@ -49,8 +49,14 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const data = await apiCall("/api/salesdata");
-      console.log("Dashboard data fetched:", data);
+      let data;
+      try {
+        data = await apiCall("/api/salesdata");
+      } catch (err) {
+        // No data uploaded yet — show empty dashboard without an error
+        setLoading(false);
+        return;
+      }
       
       if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
         const salesList = data.data;
@@ -92,7 +98,6 @@ const Dashboard = () => {
       }
       setLoading(false);
     } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
       setLoading(false);
     }
   };
